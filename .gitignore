@@ -1,0 +1,49 @@
+# Ambientes virtuais Python
+.venv/
+venv/
+env/
+ENV/
+
+# Arquivos Python compilados
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribuição / empacotamento
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Arquivos de configuração local
+.env
+.env.local
