@@ -2,6 +2,21 @@ date,observacao
 2025-11-17,Sobreaviso
 2025-11-20,Feriado/Dia sem estágio
 2025-11-21,Sobreaviso
+2025-12-01,"Relatório – 12/01
+Escola  –  Ruy Carneiro
+
+O Computador 1 estava há aproximadamente três dias sem ligar.
+Iniciei os testes preliminares às 15h10.
+O provável causador do problema era o estabilizador, que estava muito quente. Desliguei o equipamento, aguardei alguns minutos e religuei. O computador voltou a funcionar normalmente às 15h15.
+
+Realizei as configurações necessárias e concluí por volta das 17h.
+O Computador 1 e o Computador 2 estão configurados e conseguem compartilhar arquivos entre si.
+
+O Computador 3 (notebook) consegue acessar os demais computadores, especificamente a pasta da área de trabalho. Porém, há uma configuração pendente no firewall do Computador 3, que impede que os Computadores 1 e 2 acessem seus arquivos.
+
+Observação: após uma queda de internet, a conexão entre o Computador 1 e o Computador 3 apresentou falha de rede. É possível avaliar, na próxima visita, ajustes para que a comunicação entre os computadores não dependa da internet.
+
+A configuração geral está parcialmente concluída, sendo que a comunicação entre os dois computadores principais (1 e 2) já está operacional."
 2025-12-25,Feriado/Dia sem estágio
 2025-12-31,Feriado/Dia sem estágio
 2026-01-01,Feriado/Dia sem estágio
