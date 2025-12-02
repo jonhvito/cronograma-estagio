@@ -102,11 +102,21 @@ def generate_calendar_view(df_schedule, start_date, end_date):
                         
                         # Tooltip com informações
                         title = f"Horas: {hours}h"
+                        has_detailed_obs = False
                         if data['obs']:
-                            title += f" | {data['obs']}"
+                            # Limita o tamanho da observação no tooltip
+                            obs_preview = data['obs'][:100] + "..." if len(data['obs']) > 100 else data['obs']
+                            obs_preview = obs_preview.replace('\n', ' ').replace('"', "'")
+                            title += f" | {obs_preview}"
+                            # Verifica se é uma observação detalhada (mais de 50 caracteres e não é padrão)
+                            if len(data['obs']) > 50 and data['obs'] not in ['Feriado/Dia sem estágio', 'Sobreaviso']:
+                                has_detailed_obs = True
                         
                         html += f"<td style='{cell_style}' title='{title}'>"
-                        html += f"<strong>{day}</strong><br>"
+                        html += f"<strong>{day}</strong>"
+                        if has_detailed_obs:
+                            html += f" 📝"  # Indicador de observação detalhada
+                        html += f"<br>"
                         html += f"<small>{hours}h</small>"
                         html += "</td>"
                     else:
@@ -502,29 +512,152 @@ if end_date:
             st.session_state.observations = new_observations
             save_observations_to_csv(st.session_state.observations)
     
-    # 4. Visualização em Calendário
+    # 4. Visualização em Calendário e Observações
     st.markdown("---")
-    st.markdown("## Visualização em Calendário")
     
-    calendars = generate_calendar_view(df_schedule, START_DATE, end_date)
+    # Cria abas principais: Calendário e Observações
+    main_tab_calendario, main_tab_observacoes = st.tabs(["📅 Calendário", "📝 Observações"])
     
-    if calendars:
-        # Cria abas para cada mês
-        tabs = st.tabs(list(calendars.keys()))
+    # Filtra observações válidas (para uso em ambas as abas)
+    observacoes_validas = {
+        k: v for k, v in st.session_state.observations.items() 
+        if v and v.strip() and v.strip() != 'Feriado/Dia sem estágio' and v.strip() != 'Sobreaviso'
+    }
+    
+    with main_tab_calendario:
+        st.markdown("## Visualização em Calendário")
         
-        for i, (month_year, cal_html) in enumerate(calendars.items()):
-            with tabs[i]:
-                st.markdown(cal_html, unsafe_allow_html=True)
+        calendars = generate_calendar_view(df_schedule, START_DATE, end_date)
+        
+        if calendars:
+            # Cria abas para cada mês
+            tabs = st.tabs(list(calendars.keys()))
+            
+            for i, (month_year, cal_html) in enumerate(calendars.items()):
+                with tabs[i]:
+                    st.markdown(cal_html, unsafe_allow_html=True)
+                    
+                    # Legenda
+                    st.markdown("""
+                    <div style='margin-top: 1rem; padding: 1rem; background-color: rgba(128, 128, 128, 0.1); border-radius: 5px; border: 1px solid rgba(128, 128, 128, 0.3);'>
+                        <strong>Legenda:</strong><br>
+                        <span style='display: inline-block; width: 20px; height: 20px; background-color: rgba(76, 175, 80, 0.3); border: 1px solid rgba(128, 128, 128, 0.3); margin-right: 5px;'></span> 8 horas<br>
+                        <span style='display: inline-block; width: 20px; height: 20px; background-color: rgba(33, 150, 243, 0.3); border: 1px solid rgba(128, 128, 128, 0.3); margin-right: 5px;'></span> 4 horas<br>
+                        <span style='display: inline-block; width: 20px; height: 20px; background-color: rgba(128, 128, 128, 0.15); border: 1px solid rgba(128, 128, 128, 0.3); margin-right: 5px;'></span> Sem horas (feriado/folga)<br>
+                        <span style='margin-right: 5px;'>📝</span> Possui observação detalhada
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Filtra observações do mês atual
+                    month_names = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+                    month_name_atual = month_year.split()[0]
+                    year_atual = int(month_year.split()[1])
+                    month_num = month_names.index(month_name_atual) + 1
+                    
+                    obs_do_mes = {
+                        k: v for k, v in observacoes_validas.items()
+                        if k.month == month_num and k.year == year_atual
+                    }
+                    
+                    if obs_do_mes:
+                        st.markdown("---")
+                        st.markdown("##### 📝 Observações deste mês")
+                        st.markdown("*Selecione uma data para ver a observação completa:*")
+                        
+                        # Cria opções para o selectbox
+                        opcoes = ["Selecione uma data..."]
+                        datas_obs = sorted(obs_do_mes.keys())
+                        for data_obs in datas_obs:
+                            dia_semana = get_weekday_name(data_obs.weekday())
+                            opcoes.append(f"{data_obs.strftime('%d/%m/%Y')} ({dia_semana})")
+                        
+                        data_selecionada = st.selectbox(
+                            "Data com observação:",
+                            opcoes,
+                            key=f"select_obs_{month_year}",
+                            label_visibility="collapsed"
+                        )
+                        
+                        if data_selecionada != "Selecione uma data...":
+                            # Extrai a data selecionada
+                            data_str = data_selecionada.split(" (")[0]
+                            data_obj = datetime.strptime(data_str, '%d/%m/%Y').date()
+                            
+                            # Busca as horas trabalhadas nesse dia
+                            horas_dia = 0
+                            for _, row in df_schedule.iterrows():
+                                if row['Data'] == data_obj:
+                                    horas_dia = row['Horas no dia']
+                                    break
+                            
+                            dia_semana = get_weekday_name(data_obj.weekday())
+                            texto_obs = obs_do_mes[data_obj]
+                            
+                            # Exibe a observação em um card bonito
+                            st.markdown(f"""
+                            <div style='background-color: rgba(33, 150, 243, 0.1); padding: 1rem; border-radius: 8px; margin-top: 1rem; border-left: 4px solid #1f77b4;'>
+                                <strong style='font-size: 1.1rem;'>📅 {dia_semana}, {data_str}</strong><br>
+                                <span style='color: #888;'>⏱️ Horas trabalhadas: {horas_dia}h</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            st.markdown("**Relatório do dia:**")
+                            st.markdown(f"""
+                            <div style='background-color: rgba(128, 128, 128, 0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(128, 128, 128, 0.2); white-space: pre-wrap; line-height: 1.6;'>
+{texto_obs}
+                            </div>
+                            """, unsafe_allow_html=True)
+    
+    with main_tab_observacoes:
+        st.markdown("## Observações do Estágio")
+        st.markdown("*Registro detalhado das atividades realizadas em cada dia*")
+        
+        if observacoes_validas:
+            # Ordena as observações por data (mais recente primeiro)
+            observacoes_ordenadas = sorted(observacoes_validas.items(), key=lambda x: x[0], reverse=True)
+            
+            st.markdown(f"**Total de observações:** {len(observacoes_ordenadas)}")
+            st.markdown("---")
+            
+            for data_obs, texto_obs in observacoes_ordenadas:
+                # Formata a data para exibição
+                dia_semana = get_weekday_name(data_obs.weekday())
+                data_formatada = data_obs.strftime('%d/%m/%Y')
                 
-                # Legenda
-                st.markdown("""
-                <div style='margin-top: 1rem; padding: 1rem; background-color: rgba(128, 128, 128, 0.1); border-radius: 5px; border: 1px solid rgba(128, 128, 128, 0.3);'>
-                    <strong>Legenda:</strong><br>
-                    <span style='display: inline-block; width: 20px; height: 20px; background-color: rgba(76, 175, 80, 0.3); border: 1px solid rgba(128, 128, 128, 0.3); margin-right: 5px;'></span> 8 horas<br>
-                    <span style='display: inline-block; width: 20px; height: 20px; background-color: rgba(33, 150, 243, 0.3); border: 1px solid rgba(128, 128, 128, 0.3); margin-right: 5px;'></span> 4 horas<br>
-                    <span style='display: inline-block; width: 20px; height: 20px; background-color: rgba(128, 128, 128, 0.15); border: 1px solid rgba(128, 128, 128, 0.3); margin-right: 5px;'></span> Sem horas (feriado/folga)
-                </div>
-                """, unsafe_allow_html=True)
+                # Busca as horas trabalhadas nesse dia
+                horas_dia = 0
+                for _, row in df_schedule.iterrows():
+                    if row['Data'] == data_obs:
+                        horas_dia = row['Horas no dia']
+                        break
+                
+                # Cria um card para cada observação
+                with st.expander(f"📌 {data_formatada} ({dia_semana}) - {horas_dia}h trabalhadas", expanded=False):
+                    # Cabeçalho com informações da data
+                    st.markdown(f"""
+                    <div style='background-color: rgba(33, 150, 243, 0.1); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #1f77b4;'>
+                        <strong style='font-size: 1.1rem;'>📅 {dia_semana}, {data_formatada}</strong><br>
+                        <span style='color: #888;'>⏱️ Horas trabalhadas: {horas_dia}h</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Conteúdo da observação formatado
+                    st.markdown("**Relatório do dia:**")
+                    st.markdown(f"""
+                    <div style='background-color: rgba(128, 128, 128, 0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(128, 128, 128, 0.2); white-space: pre-wrap; line-height: 1.6;'>
+{texto_obs}
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info("📭 Nenhuma observação detalhada cadastrada ainda.")
+            st.markdown("""
+            **Como adicionar observações:**
+            1. Vá até a tabela do **Cronograma Detalhado** acima
+            2. Clique na coluna **Observação** do dia desejado
+            3. Digite seu relatório ou anotações
+            4. As observações serão salvas automaticamente e aparecerão aqui
+            """)
     
     # 5. Exportar Cronograma (Opcional)
     @st.cache_data
