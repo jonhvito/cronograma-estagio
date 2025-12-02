@@ -108,8 +108,8 @@ def generate_calendar_view(df_schedule, start_date, end_date):
                             obs_preview = data['obs'][:100] + "..." if len(data['obs']) > 100 else data['obs']
                             obs_preview = obs_preview.replace('\n', ' ').replace('"', "'")
                             title += f" | {obs_preview}"
-                            # Verifica se é uma observação detalhada (mais de 50 caracteres e não é padrão)
-                            if len(data['obs']) > 50 and data['obs'] not in ['Feriado/Dia sem estágio', 'Sobreaviso']:
+                            # Verifica se é uma observação válida (não é padrão de feriado/sobreaviso)
+                            if data['obs'].strip() not in ['Feriado/Dia sem estágio', 'Sobreaviso', '']:
                                 has_detailed_obs = True
                         
                         html += f"<td style='{cell_style}' title='{title}'>"
